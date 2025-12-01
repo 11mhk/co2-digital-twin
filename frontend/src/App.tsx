@@ -109,19 +109,50 @@ export default function PuneGridMap() {
   const lastRequestRef = useRef<number | null>(null);
 
   // update cell after backend returns
-  async function sendParamsToBackend(cellId: string, params: Params) {
-    try {
-      // optimistic update: set params locally immediately (UI responsiveness)
-      setCells((prev) => prev.map((c) => (c.id === cellId ? { ...c, params } : c)));
+// Convert cell id "cell_r_c" to backend tile index
+function cellIdToTileIndex(cellId: string, COLS: number) {
+  const parts = cellId.split("_");
+  const r = Number(parts[1]);
+  const c = Number(parts[2]);
+  return r * COLS + c;
+}
 
-      // post
-      const resp = await axios.post("http://localhost:8000/predict", { cellId, params });
-      const data = resp.data as { cellId: string; score: number; color: string };
-      setCells((prev) => prev.map((c) => (c.id === data.cellId ? { ...c, score: data.score, color: data.color } : c)));
-    } catch (err) {
-      console.error("API error", err);
-    }
+async function sendParamsToBackend(cellId: string, params: Params) {
+  try {
+    // Update locally first for fast UI feedback
+    setCells(prev =>
+      prev.map(c => (c.id === cellId ? { ...c, params } : c))
+    );
+
+    const tile_id = cellIdToTileIndex(cellId, COLS);
+
+    // Send to backend (YOUR FastAPI route)
+    const resp = await axios.post("http://localhost:8000/api/tile/update", {
+      tile_id,
+      factors: params
+    });
+
+    const data = resp.data;
+
+    // Map backend's tile_id back to cell id
+    const row = Math.floor(data.tile_id / COLS);
+    const col = data.tile_id % COLS;
+    const returnedCellId = `cell_${row}_${col}`;
+
+    // Update map tile color + CO2 value
+    setCells(prev =>
+      prev.map(c =>
+        c.id === returnedCellId
+          ? { ...c, score: data.co2_value, color: data.color }
+          : c
+      )
+    );
+
+  } catch (err) {
+    console.error("Error calling backend:", err);
   }
+}
+
 
   // when user updates sliders, call backend (debounced)
   function onParamsChange(cellId: string, newParams: Params) {
