@@ -5,7 +5,7 @@ import pandas as pd
 import json
 
 # Import your simulation function
-from backend.run_simulation import run as run_simulation
+from run_simulation import run as run_simulation
 
 
 app = FastAPI()
