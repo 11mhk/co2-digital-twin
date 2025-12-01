@@ -100,7 +100,8 @@ function buildGrid(rows: number, cols: number): CellState[] {
 export default function PuneGridMap() {
   const ROWS = 8; // configurable rows
   const COLS = 10;
-  const [cells, setCells] = useState<CellState[]>(() => buildGrid(ROWS, COLS));
+  const [cells, setCells] = useState<CellState[]>([]);
+
   const [selectedCellId, setSelectedCellId] = useState<string | null>(cells[0]?.id ?? null);
   const [isPlacing, setIsPlacing] = useState(false); // if using 'place interventions' etc
   const selectedCell = useMemo(() => cells.find((c) => c.id === selectedCellId) ?? null, [cells, selectedCellId]);
