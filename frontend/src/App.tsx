@@ -172,12 +172,50 @@ async function sendParamsToBackend(cellId: string, params: Params) {
   }
 
   // Optional: periodically fetch grid-state from backend
-  useEffect(() => {
-    let mounted = true;
-    // function fetchGrid() { axios.get('/grid-state').then(resp=> setCells(resp.data.cells)) }
-    // Uncomment and implement if backend provides aggregated grid state
-    return () => { mounted = false; };
-  }, []);
+useEffect(() => {
+  async function loadGrid() {
+    try {
+      const res = await axios.get("http://localhost:8000/api/grid");
+      const grid = res.data;
+
+      const latStep = (PUNE_BBOX.north - PUNE_BBOX.south) / ROWS;
+      const lngStep = (PUNE_BBOX.east - PUNE_BBOX.west) / COLS;
+
+      const mapped = grid.map((tile: any) => {
+        const row = Number(tile.row);
+        const col = Number(tile.col);
+
+        // construct map bounds for this tile
+        const south = PUNE_BBOX.south + row * latStep;
+        const north = south + latStep;
+        const west = PUNE_BBOX.west + col * lngStep;
+        const east = west + lngStep;
+
+        const bounds = [[south, west], [north, east]];
+
+        const co2 = Number(tile.co2);
+
+        return {
+          id: `cell_${row}_${col}`,
+          row,
+          col,
+          bounds,
+          score: co2,
+          color: co2ToColor(co2),
+          params: DEFAULT_PARAMS,
+        } as CellState;
+      });
+
+      setCells(mapped);
+
+    } catch (err) {
+      console.error("Failed to load grid:", err);
+    }
+  }
+
+  loadGrid();
+}, []);
+
 
   // render
   return (
